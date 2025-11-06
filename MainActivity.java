@@ -13,11 +13,16 @@ import androidx.core.view.ViewCompat;
 import androidx.core.view.WindowInsetsCompat;
 
 public class MainActivity extends AppCompatActivity {
-    private EditText ed_name;
-    private TextView tv_text,tv_name,tv_winner,tv_mmora,tv_cmora;
-    private RadioButton btn_scissor,btn_stone,btn_paper;
-    private Button btn_mora;
 
+    private EditText edName;
+    private TextView tvText, tvName, tvWinner, tvMyMora, tvComMora;
+    private RadioButton btnScissor, btnStone, btnPaper;
+    private Button btnMora;
+
+    // 常數代表出拳
+    private static final int SCISSOR = 0;
+    private static final int STONE = 1;
+    private static final int PAPER = 2;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -25,69 +30,99 @@ public class MainActivity extends AppCompatActivity {
         EdgeToEdge.enable(this);
         setContentView(R.layout.activity_main);
 
-        ed_name = findViewById(R.id.edit_name);
-        tv_text = findViewById(R.id.textView);
-        tv_name = findViewById(R.id.textView3);
-        tv_winner = findViewById(R.id.textView4);
-        tv_mmora = findViewById(R.id.textView5);
-        tv_cmora = findViewById(R.id.textView6);
-        btn_mora = findViewById(R.id.button);
-        btn_paper = findViewById(R.id.btn_paper);
-        btn_scissor = findViewById(R.id.btn_scissor);
-        btn_stone = findViewById(R.id.btn_stone);
+        // 取得元件
+        edName = findViewById(R.id.edit_name);
+        tvText = findViewById(R.id.textView);
+        tvName = findViewById(R.id.textView3);
+        tvWinner = findViewById(R.id.textView4);
+        tvMyMora = findViewById(R.id.textView5);
+        tvComMora = findViewById(R.id.textView6);
+        btnMora = findViewById(R.id.button);
+        btnScissor = findViewById(R.id.btn_scissor);
+        btnStone = findViewById(R.id.btn_stone);
+        btnPaper = findViewById(R.id.btn_paper);
 
-        btn_mora.setOnClickListener(view ->{
-            if(ed_name.length() < 1){
-                tv_text.setText("請輸入玩家姓名");
-            }
-            else{
-                tv_name.setText(String.format("名字\n%s",ed_name.getText().toString()));
+        // 設定按鈕事件
+        btnMora.setOnClickListener(view -> playGame());
 
-                if(btn_scissor.isChecked()){
-                    tv_mmora.setText("我方出拳\n剪刀");
-                }
-                else if(btn_stone.isChecked()){
-                    tv_mmora.setText("我方出拳\n石頭");
-                }
-                else {
-                    tv_mmora.setText("我方出拳\n布");
-                }
-
-                int computer_random = (int) (Math.random() * 3);
-
-                if(computer_random == 0) {
-                    tv_cmora.setText("電腦出拳\n剪刀");
-                }
-                else if (computer_random == 1) {
-                    tv_cmora.setText("電腦出拳\n石頭");
-                }
-                else{
-                    tv_cmora.setText("電腦出拳\n布");
-                }
-
-                if((btn_scissor.isChecked() && computer_random == 2)||
-                        (btn_stone.isChecked() && computer_random == 0)||
-                        (btn_paper.isChecked() && computer_random == 1)){
-                    tv_winner.setText("勝利者\n" + ed_name.getText().toString());
-                    tv_text.setText("恭喜你獲勝了!!!");
-                } else if ((btn_scissor.isChecked() && computer_random == 1)||
-                        (btn_stone.isChecked() && computer_random == 2)||
-                        (btn_paper.isChecked() && computer_random == 0)) {
-                    tv_winner.setText("獲勝者\n電腦");
-                    tv_text.setText("可惜，電腦獲勝了");
-                }else{
-                    tv_winner.setText("獲勝者\n平手");
-                    tv_text.setText("平局，再試一次");
-                }
-            }
-        });
-
-
-
+        // 系統邊界設定
         ViewCompat.setOnApplyWindowInsetsListener(findViewById(R.id.main), (v, insets) -> {
             Insets systemBars = insets.getInsets(WindowInsetsCompat.Type.systemBars());
             v.setPadding(systemBars.left, systemBars.top, systemBars.right, systemBars.bottom);
             return insets;
         });
+    }
+
+    /** 主遊戲邏輯 */
+    private void playGame() {
+        String playerName = edName.getText().toString().trim();
+
+        // 防呆：檢查是否輸入名字
+        if (playerName.isEmpty()) {
+            tvText.setText("請輸入玩家姓名");
+            return;
+        }
+
+        // 防呆：檢查是否選擇出拳
+        if (!btnScissor.isChecked() && !btnStone.isChecked() && !btnPaper.isChecked()) {
+            tvText.setText("請選擇你的出拳！");
+            return;
+        }
+
+        // 取得玩家出拳
+        int myMora = getPlayerMora();
+        tvName.setText(String.format("名字\n%s", playerName));
+        tvMyMora.setText("我方出拳\n" + getMoraString(myMora));
+
+        // 產生電腦出拳
+        int comMora = (int) (Math.random() * 3);
+        tvComMora.setText("電腦出拳\n" + getMoraString(comMora));
+
+        // 判斷勝負
+        Result result = decideWinner(playerName, myMora, comMora);
+        tvWinner.setText("勝利者\n" + result.winner);
+        tvText.setText(result.message);
+    }
+
+    /** 將按鈕選項轉換成出拳代號 */
+    private int getPlayerMora() {
+        if (btnScissor.isChecked()) return SCISSOR;
+        else if (btnStone.isChecked()) return STONE;
+        else return PAPER;
+    }
+
+    /** 回傳出拳文字 */
+    private String getMoraString(int mora) {
+        switch (mora) {
+            case SCISSOR:
+                return "剪刀";
+            case STONE:
+                return "石頭";
+            default:
+                return "布";
+        }
+    }
+
+    /** 判斷勝負，回傳結果物件 */
+    private Result decideWinner(String name, int myMora, int comMora) {
+        if (myMora == comMora)
+            return new Result("平手", "平局，再試一次！");
+        else if ((myMora == SCISSOR && comMora == PAPER) ||
+                 (myMora == STONE && comMora == SCISSOR) ||
+                 (myMora == PAPER && comMora == STONE))
+            return new Result(name, "恭喜你獲勝了！！！");
+        else
+            return new Result("電腦", "可惜，電腦獲勝了！");
+    }
+
+    /** 用於包裝勝負結果 */
+    private static class Result {
+        String winner;
+        String message;
+
+        Result(String winner, String message) {
+            this.winner = winner;
+            this.message = message;
+        }
     }
 }
